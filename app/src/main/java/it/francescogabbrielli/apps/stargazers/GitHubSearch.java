@@ -2,15 +2,23 @@ package it.francescogabbrielli.apps.stargazers;
 
 import java.util.List;
 
-public class GitHubRepos {
+public class GitHubSearch<T> {
 
     private int total_count;
 
     private boolean incomplete_results;
 
-    private List<GitHubRepo> items;
+    private List<T> items;
 
-    public List<GitHubRepo> getItems() {
+    public int getTotalCount() {
+        return total_count;
+    }
+
+    public boolean isIncompleteResults() {
+        return incomplete_results;
+    }
+
+    public List<T> getItems() {
         return items;
     }
 

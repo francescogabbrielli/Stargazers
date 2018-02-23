@@ -27,7 +27,7 @@ public interface GitHubService {
      * @return
      *      the retrofit-callable list of users
      */
-    @Headers({"User-Agent: francescogabbrielli","Authentication: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
+    @Headers({"User-Agent: francescogabbrielli", "Authorization: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
     @GET("repos/{user}/{repo}/stargazers")
     Call<List<GitHubUser>> listStargazers(
             @Path("user") String user,
@@ -45,9 +45,9 @@ public interface GitHubService {
      * @return
      *      search result
      */
-    @Headers({"User-Agent: francescogabbrielli","Authentication: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
+    @Headers({"User-Agent: francescogabbrielli", "Authorization: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
     @GET("search/users")
-    Call<GitHubUsers> searchUsers(
+    Call<GitHubSearch<GitHubUser>> searchUsers(
             @Query("q") String query,
             @Query("per_page") int perPage);
 
@@ -57,15 +57,15 @@ public interface GitHubService {
      * @param query
      *      github query
      * @param sort
-     *      sort by
+     *      sort by ?
      * @param perPage
      *      how many results per page
      * @return
      *      search result
      */
-    @Headers({"User-Agent: francescogabbrielli","Authentication: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
+    @Headers({"User-Agent: francescogabbrielli", "Authorization: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
     @GET("search/repositories")
-    Call<GitHubRepos> searchRepos(
+    Call<GitHubSearch<GitHubRepo>> searchRepos(
             @Query("q") String query,
             @Query("sort") String sort,
             @Query("per_page") int perPage);
