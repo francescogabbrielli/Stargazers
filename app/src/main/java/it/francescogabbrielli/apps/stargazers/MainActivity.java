@@ -12,9 +12,14 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.widget.Toast;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import okhttp3.Cache;
+import okhttp3.OkHttpClient;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -30,6 +35,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * https://developer.android.com/training/search/setup.html?#create-sc
  * https://stackoverflow.com/questions/27378981/how-to-use-searchview-in-toolbar-android
  * https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView
+ * https://futurestud.io/tutorials/retrofit-2-activate-response-caching-etag-last-modified
  */
 public class MainActivity extends AppCompatActivity implements Callback<List<GitHubUser>> {
 
@@ -40,6 +46,9 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
     private final static String HEADER_LINK         = "Link";
     private final static String HEADER_LINK_NEXT    = "rel=\"next\"";
+
+    private final static Pattern PATTERN_LAST_PAGE  =
+            Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
     private RecyclerView recycler;
     private LinearLayoutManager layoutManager;
@@ -55,7 +64,9 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
         setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
         setupRecyler();
@@ -87,11 +98,21 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     }
 
     private void setupRetrofit() {
+
+        Cache cache = new Cache(getCacheDir(), R.integer.cache_size);
+
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .cache(cache)
+                .build();
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(getString(R.string.github_api_baseurl))
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
+
         service = retrofit.create(GitHubService.class);
+
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -132,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             Log.d(TAG, "Query: "+query);
             handleSearch(query);
 
+        // handle suggestion click
         } else if(Intent.ACTION_VIEW.equals(intent.getAction())) {
 
             String query = intent.getDataString();
@@ -148,6 +170,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     private void handleSearch(String query) {
         try {
             adapter.reset();
+            scrollListener.resetState();
             String[] parts = query.split("/");
             repoOwner = parts[0];
             repoName = parts[1];
@@ -170,8 +193,11 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         try {
             if (response.isSuccessful()) {
                 String links = response.headers().get(HEADER_LINK);
-                if (links == null || !links.contains(HEADER_LINK_NEXT))
+                if (links == null || !links.contains(HEADER_LINK_NEXT)) {
                     adapter.setNoMoreData(true);
+                    showCount(response.body().size());
+                } else if (adapter.getItemCount()==0)
+                    count(response);
                 adapter.addData(response.body());
             } else
                 adapter.setError(response.message());
@@ -188,4 +214,28 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         Log.e(TAG, getString(R.string.error_loading), t);
     }
 
+    private void count(Response<List<GitHubUser>> response) {
+        Matcher m = PATTERN_LAST_PAGE.matcher(response.headers().get("Link"));
+        if(m.find()) {
+            final int last = Integer.parseInt(m.group(1));
+            service.listStargazers(repoOwner, repoName, last).enqueue(new Callback<List<GitHubUser>>() {
+                @Override
+                public void onResponse(Call<List<GitHubUser>> call, Response<List<GitHubUser>> response) {
+                    if (response.isSuccessful()) {
+                        int tot = (last-1)*30 + response.body().size();
+                        showCount(tot);
+                    }
+                }
+                @Override
+                public void onFailure(Call<List<GitHubUser>> call, Throwable t) {}
+            });
+        }
+    }
+
+    private void showCount(int n) {
+        Toast.makeText(
+                this,
+                getString(R.string.search_count, n),
+                Toast.LENGTH_LONG).show();
+    }
 }
