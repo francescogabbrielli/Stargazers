@@ -76,13 +76,14 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
     }
 
     public void readFromBundle(Bundle bundle) {
-        clear();
+        reset();
         for (Parcelable p : bundle.getParcelableArray(KEY_USERS))
             users.add((GitHubUser) p);
-        empty = bundle.getBoolean(KEY_EMPTY);
-        error = bundle.getString(KEY_ERROR);
         noMoreData = bundle.getBoolean(KEY_NO_MORE);
-        notifyDataSetChanged();
+        if (bundle.getString(KEY_ERROR)!=null)
+            setError(bundle.getString(KEY_ERROR));
+        else if (bundle.getBoolean(KEY_EMPTY))
+            setEmpty();
     }
 
     public void writeToBundle(Bundle bundle) {

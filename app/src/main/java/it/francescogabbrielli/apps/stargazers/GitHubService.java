@@ -1,6 +1,8 @@
 package it.francescogabbrielli.apps.stargazers;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -14,6 +16,11 @@ import retrofit2.http.Query;
  * Created by Francesco Gabbrielli on 20/02/18.
  */
 public interface GitHubService {
+
+    final static int PER_PAGE = 30;
+
+    final static Pattern PATTERN_LAST_PAGE  =
+            Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
     /**
      * Get the list of users stargazing a repository
@@ -69,5 +76,16 @@ public interface GitHubService {
             @Query("q") String query,
             @Query("sort") String sort,
             @Query("per_page") int perPage);
+
+    static int findLastPage(okhttp3.Headers headers) {
+        Matcher m = PATTERN_LAST_PAGE.matcher(headers.get("Link"));
+        if (m.find())
+            return Integer.parseInt(m.group(1));
+        return 0;
+    }
+
+    static int countStargazers(int lastPage, List<GitHubUser> lastPageUsers) {
+        return (lastPage-1) * PER_PAGE + lastPageUsers.size();
+    }
 
 }

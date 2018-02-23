@@ -24,6 +24,11 @@ import static org.junit.Assert.assertTrue;
  */
 public class GitHubApiTest {
 
+    private final static int EXPECTED_LAST_PAGE = 6;
+    private final static int EXPECTED_COUNT = 159;
+    private final static int EXPECTED_USERS = 53;
+    private final static int EXPECTED_REPOS = 5;
+
     private final static Retrofit retrofit = new Retrofit.Builder()
             .baseUrl("https://api.github.com/")
             .addConverterFactory(GsonConverterFactory.create())
@@ -45,18 +50,17 @@ public class GitHubApiTest {
         Matcher m = PATTERN_LAST_PAGE.matcher(res.headers().get("Link"));
         if(m.find())
             last = Integer.parseInt(m.group(1));
-        assertEquals(6, last);
+        assertEquals(EXPECTED_LAST_PAGE, last);
     }
 
     @Test
     public void count_stargazers() throws Exception {
 
-        int lastPage = 6;
+        int lastPage = EXPECTED_LAST_PAGE;
         Response<List<GitHubUser>> res = service.listStargazers("codeschool", "NoteWrangler", lastPage).execute();
 
         assertTrue(res.isSuccessful());
-
-        assertEquals(158, (lastPage-1)*30 + res.body().size());
+        assertEquals(EXPECTED_COUNT, GitHubService.countStargazers(lastPage, res.body()));
     }
 
     @Test
@@ -65,17 +69,17 @@ public class GitHubApiTest {
         Response<GitHubSearch<GitHubUser>> search = service.searchUsers("codeschoo", 5).execute();
 
         assertTrue(search.isSuccessful());
-        assertEquals(53, search.body().getTotalCount());
+        assertEquals(EXPECTED_USERS, search.body().getTotalCount());
 
     }
 
     @Test
     public void search_repos() throws Exception {
 
-        Response<GitHubSearch<GitHubRepo>> search = service.searchRepos("codeschool/", "score", 5).execute();
+        Response<GitHubSearch<GitHubRepo>> search = service.searchRepos("francescogabbrielli/", "score", 5).execute();
 
         assertTrue(search.isSuccessful());
-        assertEquals(2240, search.body().getTotalCount());
+        assertEquals(EXPECTED_REPOS, search.body().getTotalCount());
 
     }
 }

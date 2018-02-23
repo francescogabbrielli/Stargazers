@@ -43,12 +43,10 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
     private final static String KEY_REPO_OWNER      = "owner";
     private final static String KEY_REPO_NAME       = "repo";
+    private final static String KEY_QUERY           = "query";
 
     private final static String HEADER_LINK         = "Link";
     private final static String HEADER_LINK_NEXT    = "rel=\"next\"";
-
-    private final static Pattern PATTERN_LAST_PAGE  =
-            Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
     private RecyclerView recycler;
     private LinearLayoutManager layoutManager;
@@ -61,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     private GitHubService service;
 
     private String repoOwner, repoName;
+    private CharSequence searchQuery;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             adapter.readFromBundle(savedInstanceState);
             repoOwner = savedInstanceState.getString(KEY_REPO_OWNER);
             repoName = savedInstanceState.getString(KEY_REPO_NAME);
+            searchQuery = savedInstanceState.getCharSequence(KEY_QUERY);
         }
     }
 
@@ -127,6 +127,12 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         searchView.setSearchableInfo(
                 searchManager.getSearchableInfo(getComponentName()));
 
+        //https://stackoverflow.com/questions/22498344/is-there-a-better-way-to-restore-searchview-state
+        if (searchQuery!=null) {
+            menu.findItem(R.id.search).expandActionView();
+            searchView.setQuery(searchQuery, false);
+
+        }
         return true;
     }
 
@@ -135,6 +141,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         outState.putString(KEY_REPO_OWNER, repoOwner);
         outState.putString(KEY_REPO_NAME, repoName);
         adapter.writeToBundle(outState);
+        outState.putCharSequence(KEY_QUERY, searchView.getQuery());
         super.onSaveInstanceState(outState);
     }
 
@@ -215,21 +222,16 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     }
 
     private void count(Response<List<GitHubUser>> response) {
-        Matcher m = PATTERN_LAST_PAGE.matcher(response.headers().get("Link"));
-        if(m.find()) {
-            final int last = Integer.parseInt(m.group(1));
-            service.listStargazers(repoOwner, repoName, last).enqueue(new Callback<List<GitHubUser>>() {
+        final int last = GitHubService.findLastPage(response.headers());
+        service.listStargazers(repoOwner, repoName, last).enqueue(new Callback<List<GitHubUser>>() {
                 @Override
                 public void onResponse(Call<List<GitHubUser>> call, Response<List<GitHubUser>> response) {
-                    if (response.isSuccessful()) {
-                        int tot = (last-1)*30 + response.body().size();
-                        showCount(tot);
-                    }
+                    if (response.isSuccessful())
+                        showCount(GitHubService.countStargazers(last, response.body()));
                 }
                 @Override
                 public void onFailure(Call<List<GitHubUser>> call, Throwable t) {}
             });
-        }
     }
 
     private void showCount(int n) {
