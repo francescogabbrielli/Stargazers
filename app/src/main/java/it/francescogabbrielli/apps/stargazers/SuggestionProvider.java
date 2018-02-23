@@ -38,11 +38,6 @@ public class SuggestionProvider extends ContentProvider {
 
     private GitHubService service;
 
-    static class Lock {
-        long time;
-    }
-    private final Lock lock = new Lock();
-
     @Override
     public boolean onCreate() {
         Retrofit retrofit = new Retrofit.Builder()
@@ -74,15 +69,12 @@ public class SuggestionProvider extends ContentProvider {
                 BaseColumns._ID,
                 SearchManager.SUGGEST_COLUMN_TEXT_1,
                 SearchManager.SUGGEST_COLUMN_INTENT_DATA
-//                SearchManager.SUGGEST_COLUMN_ICON_1
         }, 0);
-
-        lock.time = SystemClock.elapsedRealtime();
 
         switch (sUriMatcher.match(uri)) {
             case 1:
                 if (selectionArgs!=null && selectionArgs.length>0)
-                    apiQuery(ret, selectionArgs[0], lock.time);
+                    apiQuery(ret, selectionArgs[0]);
                 break;
             default:
                 Log.i(getClass().getSimpleName(), "UNHANDLED CODE: "+sUriMatcher.match(uri));
@@ -90,23 +82,16 @@ public class SuggestionProvider extends ContentProvider {
         return ret;
     }
 
-    private void apiQuery(MatrixCursor cursor, String query, long time) {
+    private void apiQuery(MatrixCursor cursor, String query) {
 
         try {
 
-            synchronized (lock) {
-                lock.wait(1000);
-            }
-
-            if (lock.time!=time) {
-                Log.i(getClass().getSimpleName(), "Discarded: "+query);
-                return;
-            }
+            Thread.sleep(200);
 
             int hintsNr = getContext().getResources().getInteger(R.integer.hints);
             if (query.contains("/")) {
 
-                Response<GitHubRepos> response =
+                Response<GitHubSearch<GitHubRepo>> response =
                         service.searchRepos(query, "stars", hintsNr).execute();
 
                 String user = query.split("/")[0];
@@ -124,7 +109,7 @@ public class SuggestionProvider extends ContentProvider {
 
             } else if (!query.isEmpty()){
 
-                Response<GitHubUsers> response =
+                Response<GitHubSearch<GitHubUser>> response =
                         service.searchUsers(query, hintsNr).execute();
                 Log.d(getClass().getSimpleName(), "Query users: "+query);
 
@@ -133,7 +118,7 @@ public class SuggestionProvider extends ContentProvider {
                 if (response.isSuccessful())
                     for (GitHubUser u : response.body().getItems()) {
                         cursor.addRow(new Object[]{++i, u.getLogin(), u.getLogin()});
-                        Log.d(getClass().getSimpleName(), "- "+u.getLogin());
+                        Log.d(getClass().getSimpleName(), "- " + u.getLogin());
                     }
 
             }

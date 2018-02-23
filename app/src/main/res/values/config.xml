@@ -2,4 +2,5 @@
 <resources>
     <string name="github_api_baseurl">https://api.github.com/</string>
     <integer name="hints">5</integer>
+    <integer name="cache_size">10000000</integer>
 </resources>
