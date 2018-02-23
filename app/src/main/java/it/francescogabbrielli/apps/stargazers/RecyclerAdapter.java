@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -131,9 +132,12 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
         // Inflate the custom layout
         switch (viewType) {
             case 1:
-                layout = R.layout.item;
+                layout = R.layout.item_odd;
                 break;
             case 2:
+                layout = R.layout.item_even;
+                break;
+            case 3:
                 layout = R.layout.loading;
                 break;
         }
@@ -146,13 +150,13 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
     @Override
     public int getItemViewType(int position) {
-        return position<users.size() ? 1 : 2;
+        return position<users.size() ? 1+position%2 : 3;
     }
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
 
-        if (getItemViewType(position)==1) {
+        if (getItemViewType(position)<3) {
 
             GitHubUser user = users.get(position);
 

@@ -17,8 +17,9 @@ import retrofit2.http.Query;
  */
 public interface GitHubService {
 
+    final static String HEADER_LINK         = "Link";
+    final static String HEADER_LINK_NEXT    = "rel=\"next\"";
     final static int PER_PAGE = 30;
-
     final static Pattern PATTERN_LAST_PAGE  =
             Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
@@ -77,11 +78,21 @@ public interface GitHubService {
             @Query("sort") String sort,
             @Query("per_page") int perPage);
 
+
+    //UTILITY METHODS
+    static boolean hasMorePages(okhttp3.Headers headers) {
+        String links = headers.get(HEADER_LINK);
+        return links!=null && links.contains(HEADER_LINK_NEXT);
+    }
+
     static int findLastPage(okhttp3.Headers headers) {
-        Matcher m = PATTERN_LAST_PAGE.matcher(headers.get("Link"));
+        String links = headers.get(HEADER_LINK);
+        if (links==null)
+            return 1;
+        Matcher m = PATTERN_LAST_PAGE.matcher(links);
         if (m.find())
             return Integer.parseInt(m.group(1));
-        return 0;
+        return 1;
     }
 
     static int countStargazers(int lastPage, List<GitHubUser> lastPageUsers) {

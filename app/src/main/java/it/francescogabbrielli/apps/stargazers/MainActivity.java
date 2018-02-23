@@ -44,15 +44,15 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     private final static String KEY_REPO_OWNER      = "owner";
     private final static String KEY_REPO_NAME       = "repo";
     private final static String KEY_QUERY           = "query";
+    private final static String KEY_FOCUS           = "focus";
 
-    private final static String HEADER_LINK         = "Link";
-    private final static String HEADER_LINK_NEXT    = "rel=\"next\"";
 
     private RecyclerView recycler;
     private LinearLayoutManager layoutManager;
     private RecyclerAdapter adapter;
 
     private SearchView searchView;
+    private boolean searchFocus;
 
     private EndlessRecyclerViewScrollListener scrollListener;
 
@@ -71,11 +71,14 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         setupRecyler();
         setupRetrofit();
 
+        searchFocus = true;
+
         if (savedInstanceState!=null) {
             adapter.readFromBundle(savedInstanceState);
             repoOwner = savedInstanceState.getString(KEY_REPO_OWNER);
             repoName = savedInstanceState.getString(KEY_REPO_NAME);
             searchQuery = savedInstanceState.getCharSequence(KEY_QUERY);
+            searchFocus = savedInstanceState.getBoolean(KEY_FOCUS);
         }
     }
 
@@ -127,21 +130,43 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         searchView.setSearchableInfo(
                 searchManager.getSearchableInfo(getComponentName()));
 
-        //https://stackoverflow.com/questions/22498344/is-there-a-better-way-to-restore-searchview-state
-        if (searchQuery!=null) {
-            menu.findItem(R.id.search).expandActionView();
-            searchView.setQuery(searchQuery, false);
+        setupSearch();
 
-        }
         return true;
+    }
+
+    private void setupSearch() {
+        if (searchView==null)
+            return;
+
+        if(!searchFocus)
+            searchView.clearFocus();
+        else
+            searchView.requestFocus();
+
+        if (searchQuery!=null)
+            searchView.setQuery(searchQuery, false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setupSearch();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+
         outState.putString(KEY_REPO_OWNER, repoOwner);
         outState.putString(KEY_REPO_NAME, repoName);
+
         adapter.writeToBundle(outState);
-        outState.putCharSequence(KEY_QUERY, searchView.getQuery());
+
+        searchQuery = searchView.getQuery();
+        searchFocus = searchView.isFocused();
+        outState.putCharSequence(KEY_QUERY, searchQuery);
+        outState.putBoolean(KEY_FOCUS, searchFocus);
+
         super.onSaveInstanceState(outState);
     }
 
@@ -199,8 +224,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     public void onResponse(Call<List<GitHubUser>> call, Response<List<GitHubUser>> response) {
         try {
             if (response.isSuccessful()) {
-                String links = response.headers().get(HEADER_LINK);
-                if (links == null || !links.contains(HEADER_LINK_NEXT)) {
+                if (!GitHubService.hasMorePages(response.headers())) {
                     adapter.setNoMoreData(true);
                     showCount(response.body().size());
                 } else if (adapter.getItemCount()==0)
