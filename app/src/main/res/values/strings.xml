@@ -11,5 +11,7 @@
     <string name="error_query">Not a well-formed query: %s</string>
     <string name="error_response">Wrong response loading new data</string>
     <string name="error_loading">Failure loading new data</string>
+    <string name="search_sort">Sort</string>
+    <string name="search_count">Found %d Stargazers!</string>
 
 </resources>
