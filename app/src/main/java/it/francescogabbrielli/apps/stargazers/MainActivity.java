@@ -247,8 +247,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
                 // count only the first time
                 if (adapter.getItemCount()<GitHubService.PER_PAGE) {
-                    count(lastPage, users.size());
                     lastPage = GitHubService.findLastPage(headers);
+                    count(lastPage, users.size());
                 }
 
                 adapter.addData(users, lastPage>1);
@@ -289,8 +289,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
      * @param currentPageSize
      *      the size of the currently loaded page
      */
-    private void count(int lastPage, int currentPageSize) {
-        if (lastPage==1)
+    private void count(final int lastPage, int currentPageSize) {
+        if (lastPage<=1)
             showCount(currentPageSize);
         else
             service.listStargazers(repoOwner, repoName, lastPage).enqueue(new Callback<List<GitHubUser>>() {
