@@ -17,11 +17,6 @@ import retrofit2.http.Query;
  */
 public interface GitHubService {
 
-    final static String HEADER_LINK         = "Link";
-    final static String HEADER_LINK_NEXT    = "rel=\"next\"";
-    final static int PER_PAGE = 30;
-    final static Pattern PATTERN_LAST_PAGE  =
-            Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
     /**
      * Get the list of users stargazing a repository
@@ -56,7 +51,7 @@ public interface GitHubService {
     @Headers({"User-Agent: francescogabbrielli", "Authorization: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
     @GET("search/users")
     Call<GitHubSearch<GitHubUser>> searchUsers(
-            @Query("q") String query,
+            @Query(value = "q", encoded = true) String query,
             @Query("per_page") int perPage);
 
     /**
@@ -71,19 +66,24 @@ public interface GitHubService {
      * @return
      *      search result
      */
+
     @Headers({"User-Agent: francescogabbrielli", "Authorization: token 4ebc4b13477b7f240f21beb3b5c998c41b96b0c1"})
     @GET("search/repositories")
     Call<GitHubSearch<GitHubRepo>> searchRepos(
-            @Query("q") String query,
+            @Query(value = "q", encoded = true) String query,
             @Query("sort") String sort,
             @Query("per_page") int perPage);
 
 
-    //UTILITY METHODS
-    static boolean hasMorePages(okhttp3.Headers headers) {
-        String links = headers.get(HEADER_LINK);
-        return links!=null && links.contains(HEADER_LINK_NEXT);
-    }
+
+
+    //------------------------------------- UTILITY METHODS ----------------------------------------
+    //
+
+    static String HEADER_LINK         = "Link";
+    static int PER_PAGE               = 30;
+    static Pattern PATTERN_LAST_PAGE  =
+            Pattern.compile("stargazers\\?page=([0-9]+?)>; rel=\"last\"");
 
     static int findLastPage(okhttp3.Headers headers) {
         String links = headers.get(HEADER_LINK);
@@ -95,8 +95,11 @@ public interface GitHubService {
         return 1;
     }
 
-    static int countStargazers(int lastPage, List<GitHubUser> lastPageUsers) {
+    static int countUsers(int lastPage, List<GitHubUser> lastPageUsers) {
         return (lastPage-1) * PER_PAGE + lastPageUsers.size();
     }
+
+    //
+    //----------------------------------------------------------------------------------------------
 
 }

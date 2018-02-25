@@ -4,13 +4,13 @@
 
     <string name="search_title">Search</string>
     <string name="search_hint">Lookup a GitHub repository</string>
-    <string name="search_empty">&#8230;No one&#8230;</string>
+    <string name="search_empty">&#8230;No one yet&#8230;</string>
 
     <string name="loading">&#8230;Loading&#8230;</string>
 
     <string name="error_query">Not a well-formed query: %s</string>
     <string name="error_response">Wrong response loading new data</string>
-    <string name="error_loading">Failure loading new data</string>
+    <string name="error_loading">Failure loading data</string>
     <string name="search_sort">Sort</string>
     <string name="search_count">Found %d Stargazers!</string>
 

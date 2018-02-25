@@ -8,12 +8,16 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.CancellationSignal;
-import android.os.SystemClock;
 import android.provider.BaseColumns;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Cache;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -40,11 +44,27 @@ public class SuggestionProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+
+        Cache cache = new Cache(getContext().getCacheDir(), R.integer.cache_size);
+
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+
+        int timeout = getContext().getResources().getInteger(R.integer.hint_timeout);
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .cache(cache)
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(getContext().getString(R.string.github_api_baseurl))
                 .addConverterFactory(GsonConverterFactory.create())
+                .client(okHttpClient)
                 .build();
         service = retrofit.create(GitHubService.class);
+
         return true;
 
     }
@@ -77,7 +97,7 @@ public class SuggestionProvider extends ContentProvider {
                     apiQuery(ret, selectionArgs[0]);
                 break;
             default:
-                Log.i(getClass().getSimpleName(), "UNHANDLED CODE: "+sUriMatcher.match(uri));
+                Log.i(MainActivity.TAG, "Unhandled query: "+sUriMatcher.match(uri));
         }
         return ret;
     }
@@ -86,45 +106,50 @@ public class SuggestionProvider extends ContentProvider {
 
         try {
 
-            Thread.sleep(200);
+            Thread.sleep(200);//TODO: implement debouncing instead
 
             int hintsNr = getContext().getResources().getInteger(R.integer.hints);
+
             if (query.contains("/")) {
 
-                Response<GitHubSearch<GitHubRepo>> response =
-                        service.searchRepos(query, "stars", hintsNr).execute();
+                String[] parts = query.split("/");
+                String repoQuery = parts.length>1 ? parts[1] : "";
 
-                String user = query.split("/")[0];
-                Log.d(getClass().getSimpleName(), "Query "+user+"'s repos: "+query);
+                Response<GitHubSearch<GitHubRepo>> response =
+                        service.searchRepos(repoQuery+"+user:"+parts[0], "stars", hintsNr)
+                                .execute();
+
+                Log.d(MainActivity.TAG, "Query "+parts[0]+"'s repos: "+repoQuery+"+user:"+parts[0]);
 
                 int i = 0;
-
                 if (response.isSuccessful())
                     for (GitHubRepo r : response.body().getItems()) {
                         if (query.equals(r.getFullName()))
                             break;
                         cursor.addRow(new Object[]{++i, r.getName(), r.getFullName()});
-                        Log.d(getClass().getSimpleName(), "- "+r.getFullName());
+                        Log.d(MainActivity.TAG, "- "+r.getFullName());
                     }
 
             } else if (!query.isEmpty()){
 
                 Response<GitHubSearch<GitHubUser>> response =
-                        service.searchUsers(query, hintsNr).execute();
-                Log.d(getClass().getSimpleName(), "Query users: "+query);
+                        service.searchUsers(query+"+in:login+in:fullname", hintsNr)
+                                .execute();
+
+                Log.d(MainActivity.TAG, "Query users: "+query);
 
                 int i = 0;
-
                 if (response.isSuccessful())
                     for (GitHubUser u : response.body().getItems()) {
                         cursor.addRow(new Object[]{++i, u.getLogin(), u.getLogin()});
-                        Log.d(getClass().getSimpleName(), "- " + u.getLogin());
+                        Log.d(MainActivity.TAG, "- " + u.getLogin());
                     }
 
             }
 
         } catch(Exception e) {
-            Log.e(getClass().getSimpleName(), e.getMessage(), e);
+            //Toast.makeText(getContext(), R.string.error_loading, Toast.LENGTH_SHORT).show();
+            Log.e(MainActivity.TAG, e.getMessage(), e);
         }
 
     }

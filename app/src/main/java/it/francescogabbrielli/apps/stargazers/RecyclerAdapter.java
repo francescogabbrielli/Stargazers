@@ -2,12 +2,11 @@ package it.francescogabbrielli.apps.stargazers;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,92 +33,91 @@ import java.util.List;
 public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHolder> {
 
     private final static String KEY_USERS           = "users";
-    private final static String KEY_IMAGES          = "images";
-    private final static String KEY_NO_MORE         = "no_more";
-    private final static String KEY_EMPTY           = "empty";
+    private final static String KEY_STATUS          = "status";
     private final static String KEY_ERROR           = "error";
 
+    private final static int STATUS_DEFAULT         = 1;
+    private final static int STATUS_MORE            = 2;
+    private final static int STATUS_EMPTY           = 3;
+    private final static int STATUS_ERROR           = 4;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public ImageView imageView;
-        public TextView usernameView;
-        public ViewHolder(View v) {
+        ImageView imageView;
+        TextView usernameView;
+        TextView errorView;
+        ViewHolder(View v) {
             super(v);
             imageView = v.findViewById(R.id.user_image);
             usernameView = v.findViewById(R.id.user_name);
+            errorView = v.findViewById(R.id.error);
         }
     }
 
     /** Android context */
     private Context context;
-    /** Status */
+    /** Endless scroll listener */
+    private EndlessRecyclerViewScrollListener scrollListener;
+    /** State */
     private int status;
     /** List of users already loaded */
     private List<GitHubUser> users;
     /** Glide request options */
     private RequestOptions requestOptions;
-
-    /** Signal no more data to load */
-    private boolean noMoreData;
-
-    /** Empty result */
-    private boolean empty;
     /** Error in search result */
     private String error;
-    /** Dummy element to represent empty and error states */
-    private final static GitHubUser dummyUser = new GitHubUser();
 
 
-    public RecyclerAdapter(Context context) {
+    public RecyclerAdapter(
+            @NonNull Context context,
+            @NonNull EndlessRecyclerViewScrollListener scrollListener) {
+
         this.context = context;
+        this.scrollListener = scrollListener;
         users = new LinkedList<>();
+        status = STATUS_DEFAULT;
         requestOptions = new RequestOptions();
+        requestOptions.placeholder(R.drawable.ic_github);
+        clear();
     }
 
     public void readFromBundle(Bundle bundle) {
-        reset();
+        clear();
         for (Parcelable p : bundle.getParcelableArray(KEY_USERS))
             users.add((GitHubUser) p);
-        noMoreData = bundle.getBoolean(KEY_NO_MORE);
+        status = bundle.getInt(KEY_STATUS);
         if (bundle.getString(KEY_ERROR)!=null)
             setError(bundle.getString(KEY_ERROR));
-        else if (bundle.getBoolean(KEY_EMPTY))
-            setEmpty();
     }
 
     public void writeToBundle(Bundle bundle) {
         bundle.putParcelableArray(KEY_USERS, users.toArray(new GitHubUser[users.size()]));
-        bundle.putBoolean(KEY_EMPTY, empty);
+        bundle.putInt(KEY_STATUS, status);
         bundle.putString(KEY_ERROR, error);
-        bundle.putBoolean(KEY_NO_MORE, noMoreData);
     }
 
-    public void reset() {
+    public synchronized void resetStatus() {
         clear();
-        empty = false;
-        error = null;
-        requestOptions.placeholder(R.drawable.ic_github);
+        status = STATUS_DEFAULT;
         notifyDataSetChanged();
     }
 
-    public void setEmpty() {
+    public synchronized void setLoading() {
         clear();
-        empty = true;
-        noMoreData = true;
-        users.add(dummyUser);
-        dummyUser.setLogin(context.getString(R.string.search_empty));
-        requestOptions.placeholder(R.drawable.ic_empty);
+        status = STATUS_MORE;
+        scrollListener.resetState();
         notifyDataSetChanged();
     }
 
-    public void setError(String error) {
+    public synchronized void setEmpty() {
+        clear();
+        status = STATUS_EMPTY;
+        notifyDataSetChanged();
+    }
+
+    public synchronized void setError(@NonNull String error) {
+        clear();
         this.error = error;
-        clear();
-        empty = true;
-        noMoreData = true;
-        users.add(dummyUser);
-        dummyUser.setLogin(error);
-        requestOptions.placeholder(R.drawable.ic_error);
+        status = STATUS_ERROR;
         notifyDataSetChanged();
     }
 
@@ -131,15 +129,22 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
         int layout = 0;
         // Inflate the custom layout
         switch (viewType) {
-            case 1:
+            case 0:
                 layout = R.layout.item_odd;
                 break;
-            case 2:
+            case 1:
                 layout = R.layout.item_even;
                 break;
-            case 3:
-                layout = R.layout.loading;
+            case STATUS_EMPTY:
+                layout = R.layout.item_empty;
                 break;
+            case STATUS_ERROR:
+                layout = R.layout.item_error;
+                break;
+            case STATUS_MORE:
+                layout = R.layout.item_loading;
+                break;
+
         }
         View userView = inflater.inflate(layout, parent, false);
 
@@ -150,13 +155,23 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
     @Override
     public int getItemViewType(int position) {
-        return position<users.size() ? 1+position%2 : 3;
+        int type = status;
+        switch (status) {
+            case STATUS_DEFAULT:
+            case STATUS_MORE:
+                if (position<users.size())
+                    type = position%2;
+                break;
+        }
+        return type;
     }
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
 
-        if (getItemViewType(position)<3) {
+        int type = getItemViewType(position);
+
+        if (type<=STATUS_DEFAULT) {
 
             GitHubUser user = users.get(position);
 
@@ -172,17 +187,19 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
                 }
             });
 
+        } else if (type==STATUS_ERROR) {
+
+            holder.errorView.setText(error);
+
         }
     }
 
     @Override
     public int getItemCount() {
-        if(empty)
+        if (status==STATUS_EMPTY || status==STATUS_ERROR)
             return 1;
-        else if (users.isEmpty())
-            return 0;
         else
-            return users.size() + (noMoreData ? 0 : 1);
+            return users.size() + (status==STATUS_MORE ? 1 : 0);
     }
 
     /**
@@ -190,11 +207,21 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
      *
      * @param data
      *      a whole bunch of user data
+     * @param more
+     *      if there are more data to load
      */
-    public void addData(List<GitHubUser> data) {
+    public synchronized void addData(@Nullable List<GitHubUser> data, boolean more) {
         if (data!=null && !data.isEmpty()) {
             int prevSize = users.size();
             users.addAll(data);
+            if (more) {
+                status = STATUS_MORE;
+                notifyItemChanged(0);
+                prevSize++;
+            } else {
+                status = STATUS_DEFAULT;
+                notifyItemRemoved(0);
+            }
             notifyItemRangeInserted(prevSize, data.size());
         } else if(users.isEmpty())
             setEmpty();
@@ -205,27 +232,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
      */
     private void clear() {
         users.clear();
-        noMoreData = false;
-    }
-
-    /**
-     * Check if there are more data to load
-     *
-     * @return
-     *      if there is more data to load
-     */
-    public boolean hasMoreData() {
-        return !noMoreData;
-    }
-
-    /**
-     * Control if more loading needed
-     *
-     * @param noMoreData
-     *         if true there is no need to load more data
-     */
-    public void setNoMoreData(boolean noMoreData) {
-        this.noMoreData = noMoreData;
+        error = null;
     }
 
 }
