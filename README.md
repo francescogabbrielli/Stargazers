@@ -7,7 +7,7 @@ The UI is pretty simple: just a search bar, used to find a GitHub repository, wi
 Once found, It shows the list of stargazers for that repository: image and login. Clicking on a stargazer you will be redirected to his GitHub page. 
 
 ### Youtube sample
-[![Open on Youtube](https://img.youtube.com/vi/qh-C3q0vrl4/2.jpg)](https://youtu.be/qh-C3q0vrl4)
+[![Open on Youtube](https://img.youtube.com/vi/rYx5bj69dSo/2.jpg)](https://youtu.be/rYx5bj69dSo)
 
 ## Technical notes and OpenSource libraries
 The client is implemented with [Retrofit](http://square.github.io/retrofit/).
