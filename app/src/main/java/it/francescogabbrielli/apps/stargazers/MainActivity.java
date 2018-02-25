@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     private String repoOwner, repoName;
     private CharSequence searchQuery;
 
-    private int lastPage;
+    private int currentPage, lastPage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -230,6 +230,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
     private void loadNextDataFromApi(int page) {
         if (page<=lastPage) {
+            currentPage = page;
             Log.d(TAG, "Loading page " + page);
             service.listStargazers(repoOwner, repoName, page).enqueue(this);
         }
@@ -251,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
                     count(lastPage, users.size());
                 }
 
-                adapter.addData(users, lastPage>1);
+                adapter.addData(users, currentPage < lastPage);
 
                 //collapse search bar
                 searchView.post(() -> {
