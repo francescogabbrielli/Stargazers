@@ -2,11 +2,11 @@
 
 A sample GitHub API Android client
 
-## Info
+## Description
 The UI is pretty simple: just a search bar, used to find a GitHub repository, with search suggestions on the fly. 
 Once found, It shows the list of stargazers for that repository: image and login. Clicking on a stargazer you will be redirected to his GitHub page. 
 
-## Video
+### Youtube sample
 [![Open on Youtube](https://img.youtube.com/vi/qh-C3q0vrl4/2.jpg)](https://youtu.be/qh-C3q0vrl4)
 
 ## Technical notes and OpenSource libraries
