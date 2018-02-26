@@ -60,7 +60,7 @@ public class GitHubApiTest {
         Response<List<GitHubUser>> res = service.listStargazers("codeschool", "NoteWrangler", lastPage).execute();
 
         assertTrue(res.isSuccessful());
-        assertEquals(EXPECTED_COUNT, GitHubService.countStargazers(lastPage, res.body()));
+        assertEquals(EXPECTED_COUNT, GitHubService.countUsers(lastPage, res.body()));
     }
 
     @Test
