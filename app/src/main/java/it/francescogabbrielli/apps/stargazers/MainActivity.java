@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import java.util.List;
@@ -207,6 +208,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             String query = intent.getDataString();
             if (!query.contains("/")) {
                 searchView.setQuery(query+"/", false);
+                ((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE))
+                        .toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
             } else {
                 handleSearch(query);
             }
@@ -248,6 +251,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
                 // count only the first time
                 if (adapter.getItemCount()<GitHubService.PER_PAGE) {
+                    currentPage = 1;
                     lastPage = GitHubService.findLastPage(headers);
                     count(lastPage, users.size());
                 }
@@ -268,17 +272,35 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
                 adapter.setError(response.message());
 
         } catch(Exception e) {
+
+            //This should not happen ...
             adapter.setError(e.getMessage());
-            recycler.post(() -> scrollListener.fallback());
+            failScrolling();
             Log.e(TAG, getString(R.string.error_response), e);
+
         }
     }
 
     @Override
     public void onFailure(Call<List<GitHubUser>> call, Throwable t) {
-        adapter.setError(getString(R.string.error_loading));
-        recycler.post(() -> scrollListener.fallback());
+
+        if (currentPage==1)
+            adapter.setError(getString(R.string.error_loading));
+        else
+            failScrolling();
+
+        Toast.makeText(this,
+                    getString(R.string.error_loading)+": "+t.getMessage(),
+                    Toast.LENGTH_SHORT).show();
         Log.e(TAG, getString(R.string.error_loading), t);
+    }
+
+    private void failScrolling() {
+        recycler.post(() -> {
+            currentPage--;
+            scrollListener.fallback();
+        });
+
     }
 
     /**
