@@ -1,6 +1,6 @@
 # Stargazers
 
-A sample GitHub API Android client
+A sample GitHub API Android client that shows the stargazers list for a given repository.
 
 ## Description
 The UI is pretty simple: just a search bar, used to find a GitHub repository, with search suggestions on the fly. 
