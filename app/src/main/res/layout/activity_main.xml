@@ -20,6 +20,11 @@
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
+    <WebView
+        android:id="@+id/homepage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <android.support.v7.widget.RecyclerView
         android:id="@+id/list_results"
         android:layout_width="match_parent"

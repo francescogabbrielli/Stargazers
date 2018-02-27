@@ -177,7 +177,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
             Glide.with(context)
                     .setDefaultRequestOptions(requestOptions)
-                    .load(user.getAvatarUrl())
+                    .load(user.getAvatarUrl()+"&size=48")
                     .into(holder.imageView);
             holder.usernameView.setText(user.getLogin());
             holder.itemView.setOnClickListener((v) -> {

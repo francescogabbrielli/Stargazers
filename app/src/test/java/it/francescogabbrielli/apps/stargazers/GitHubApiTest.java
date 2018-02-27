@@ -16,10 +16,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Basic GitHub Tests
+ * Basic GitHub Tests (not a proper Unit test)
  *
  * NB: check one repos and update expected data before running!
- *
  * Created by Francesco Gabbrielli on 20/02/18.
  */
 public class GitHubApiTest {
@@ -60,7 +59,7 @@ public class GitHubApiTest {
         Response<List<GitHubUser>> res = service.listStargazers("codeschool", "NoteWrangler", lastPage).execute();
 
         assertTrue(res.isSuccessful());
-        assertEquals(EXPECTED_COUNT, GitHubService.countStargazers(lastPage, res.body()));
+        assertEquals(EXPECTED_COUNT, GitHubService.countUsers(lastPage, res.body()));
     }
 
     @Test
@@ -82,4 +81,5 @@ public class GitHubApiTest {
         assertEquals(EXPECTED_REPOS, search.body().getTotalCount());
 
     }
+
 }

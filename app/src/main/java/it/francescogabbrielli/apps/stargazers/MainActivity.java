@@ -4,19 +4,19 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
-import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
-import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebView;
 import android.widget.Toast;
 
 import java.util.List;
@@ -92,14 +92,19 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             lastPage = savedInstanceState.getInt(KEY_LAST);
         }
 
-        setTitle(makeTitle());
+        resetTitle();
     }
 
-    private CharSequence makeTitle() {
-        CharSequence ret = getString(R.string.app_name);
-        if (repoName!=null)
-            ret = repoOwner + "/" + repoName;
-        return ret;
+    private void resetTitle() {
+        CharSequence title = getString(R.string.app_name);
+        WebView v = findViewById(R.id.homepage);
+        if (repoName!=null) {
+            title = repoOwner + "/" + repoName;
+            v.setVisibility(View.GONE);
+        } else if (v.getVisibility()==View.VISIBLE) {
+            v.loadUrl("https://github.com/francescogabbrielli/Stargazers/blob/master/README.md");
+        }
+        setTitle(title);
     }
 
     private void setupRecyler() {
@@ -226,8 +231,11 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             adapter.setLoading();
             service.listStargazers(repoOwner, repoName, 1).enqueue(this);
         } catch (Exception e) {
+            repoName = null;
             adapter.setError(getString(R.string.error_query, query));
             Log.e(TAG, getString(R.string.error_query, query), e);
+        } finally {
+            resetTitle();
         }
     }
 
@@ -264,29 +272,36 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
                     searchView.setQuery("", false);
                     searchView.setIconified(true);
                     searchItem.collapseActionView();
-                    setTitle(makeTitle());
                 });
 
-            } else
+            } else {
 
                 adapter.setError(response.message());
+                repoName = null;
+
+            }
 
         } catch(Exception e) {
 
             //This should not happen ...
+            repoName = null;
             adapter.setError(e.getMessage());
             failScrolling();
             Log.e(TAG, getString(R.string.error_response), e);
 
+        } finally {
+            resetTitle();
         }
     }
 
     @Override
     public void onFailure(Call<List<GitHubUser>> call, Throwable t) {
 
-        if (currentPage==1)
+        if (currentPage==1) {
+            repoName = null;
+            resetTitle();
             adapter.setError(getString(R.string.error_loading));
-        else
+        } else
             failScrolling();
 
         Toast.makeText(this,
@@ -300,7 +315,6 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             currentPage--;
             scrollListener.fallback();
         });
-
     }
 
     /**
