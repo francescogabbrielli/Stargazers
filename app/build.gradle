@@ -39,4 +39,5 @@ dependencies {
     compile 'com.android.support:support-annotations:22.2.0'
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+    implementation 'com.android.support:design:27.0.2'
 }

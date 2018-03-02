@@ -4,6 +4,7 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,7 +17,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.util.List;
@@ -32,8 +36,9 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+
 /**
- * See all GitHub stargazers!
+ * Search and display all of GitHub stargazers!
  *
  * REFERENCES
  * ==========
@@ -43,9 +48,13 @@ import retrofit2.converter.gson.GsonConverterFactory;
  * https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView
  * https://futurestud.io/tutorials/retrofit-2-activate-response-caching-etag-last-modified
  */
-public class MainActivity extends AppCompatActivity implements Callback<List<GitHubUser>> {
+public class MainActivity extends AppCompatActivity
+        implements
+        MenuItem.OnActionExpandListener,
+        SearchView.OnQueryTextListener,
+        Callback<List<GitHubUser>> {
 
-    public final static String TAG = "Stargazers";
+    private final static String TAG = "Stargazers-Main";
 
     private final static String KEY_REPO_OWNER      = "owner";
     private final static String KEY_REPO_NAME       = "repo";
@@ -53,23 +62,22 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     private final static String KEY_FOCUS           = "focus";
     private final static String KEY_LAST            = "last";
 
-
     private RecyclerView recycler;
-    private LinearLayoutManager layoutManager;
     private RecyclerAdapter adapter;
 
     private MenuItem searchItem;
     private SearchView searchView;
-    private boolean searchFocus;
 
     private EndlessRecyclerViewScrollListener scrollListener;
 
     private GitHubService service;
 
-    private String repoOwner, repoName;
     private CharSequence searchQuery;
+    private boolean searchFocus;
 
+    private String repoOwner, repoName;
     private int currentPage, lastPage;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,10 +86,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
         setContentView(R.layout.activity_main);
         setSupportActionBar(findViewById(R.id.toolbar));
-        setupRecyler();
+        setupRecycler();
         setupRetrofit();
-
-        searchFocus = true;
 
         if (savedInstanceState!=null) {
             adapter.readFromBundle(savedInstanceState);
@@ -92,25 +98,80 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
             lastPage = savedInstanceState.getInt(KEY_LAST);
         }
 
-        resetTitle();
+        setupTitleAndHome();
     }
 
-    private void resetTitle() {
-        CharSequence title = getString(R.string.app_name);
-        WebView v = findViewById(R.id.homepage);
-        if (repoName!=null) {
+    //----------------------------------------------------------------------------------------------
+    // <editor-fold defaultstate="collapsed" desc="STATE METHODS: These methods determine the state of the activity">
+    //
+    // STATE METHODS: These methods determine the state of the activity
+    //----------------------------------------------------------------------------------------------
+    //
+    //----------------------------------------------------------------------------------------------
+    //
+    //----------------------------------------------------------------------------------------------
+    //
+    private boolean isRepoSet() {
+        return repoName!=null;
+    }
+
+    private boolean isError() {
+        return adapter.getStatus()==RecyclerAdapter.STATUS_ERROR;
+    }
+
+    private boolean isOk() {
+        return adapter.hasUsers();
+    }
+
+    private boolean isSearchFocused() {
+        return searchFocus;
+    }
+
+    private boolean isQueryTyped() {
+        return !TextUtils.isEmpty(searchQuery);
+    }
+    // </editor-fold>
+    //----------------------------------------------------------------------------------------------
+
+    //----------------------------------------------------------------------------------------------
+    // <editor-fold defaultstate="collapsed" desc="SETUP METHODS">
+    //
+    // SETUP METHODS
+    //----------------------------------------------------------------------------------------------
+    //
+    private void setupHomePage() {
+
+    }
+
+    private void setupTitleAndHome() {
+
+        //setup title
+        CharSequence title = getString(R.string.welcome);
+        if (isRepoSet())
             title = repoOwner + "/" + repoName;
-            v.setVisibility(View.GONE);
-        } else if (v.getVisibility()==View.VISIBLE) {
-            v.loadUrl("https://github.com/francescogabbrielli/Stargazers/blob/master/README.md");
-        }
         setTitle(title);
+
+        //update webview with homepage
+        WebView v = findViewById(R.id.homepage);
+        if (isRepoSet() || isOk() || isError())
+            v.setVisibility(View.GONE);
+
+        else if (v.getUrl()==null) {
+            v.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                    //TODO: handle no connection
+                }
+            });
+            v.loadUrl(getString(R.string.home_page));
+        }
+
     }
 
-    private void setupRecyler() {
+    private void setupRecycler() {
         recycler = findViewById(R.id.list_results);
         recycler.setHasFixedSize(true);
-        layoutManager = new LinearLayoutManager(this);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recycler.setLayoutManager(layoutManager);
         scrollListener = new EndlessRecyclerViewScrollListener(layoutManager) {
             @Override
@@ -151,6 +212,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         service = retrofit.create(GitHubService.class);
 
     }
+    // </editor-fold>
+    //----------------------------------------------------------------------------------------------
 
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -159,19 +222,71 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         // Associate searchable configuration with the SearchView
         SearchManager searchManager =
                 (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+
+        if (searchManager==null) {
+            Toast.makeText(this,
+                    R.string.error_search_service_not_found,
+                    Toast.LENGTH_LONG).show();
+            return false;
+        }
+
         searchItem = menu.findItem(R.id.search);
         searchView = (SearchView) searchItem.getActionView();
+        searchView.setMaxWidth(Integer.MAX_VALUE);
         searchView.setSearchableInfo(
                 searchManager.getSearchableInfo(getComponentName()));
 
-        if (!TextUtils.isEmpty(searchQuery))
+        if (isSearchFocused() && isQueryTyped()) {
             new Handler().post(() -> {
-//                searchView.setQuery("", false);
                 searchView.setIconified(false);
                 searchItem.expandActionView();
                 searchView.setQuery(searchQuery, false);
+                searchItem.setOnActionExpandListener(this);
+                searchView.setOnQueryTextListener(this);
             });
+        } else {
+            searchItem.setOnActionExpandListener(this);
+            searchView.setOnQueryTextListener(this);
+        }
 
+        return true;
+    }
+
+    @Override
+    public boolean onMenuItemActionCollapse(MenuItem item) {
+        WebView v = findViewById(R.id.homepage);
+        if (!isOk() || !isQueryTyped()) {
+            adapter.resetStatus();
+            repoName = null;
+            v.setVisibility(View.VISIBLE);
+            setupTitleAndHome();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onMenuItemActionExpand(MenuItem item) {
+        if (isRepoSet())
+            searchView.post(()-> {
+                searchView.setOnQueryTextListener(null);
+                searchQuery = repoOwner+"/"+repoName;
+                searchView.setQuery(searchQuery, false);
+                searchView.setOnQueryTextListener(this);
+            });
+        return true;
+    }
+
+    @Override
+    public boolean onQueryTextChange(String newText) {
+        if (!TextUtils.equals(newText, searchQuery))
+            searchQuery = newText;
+        searchFocus = true;
+        return true;
+    }
+
+    @Override
+    public boolean onQueryTextSubmit(String query) {
+//        searchQuery = query;
         return true;
     }
 
@@ -183,8 +298,14 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
         adapter.writeToBundle(outState);
 
-        searchQuery = searchView.getQuery();//Not needed?
-        searchFocus = searchView.isFocused();//Not needed?
+        // update searchQuery and searchFocus only from the search field (if it has layout)
+        searchQuery = null;
+        searchFocus = false;
+        if (searchView!=null) {
+            searchQuery = searchView.getQuery();
+            searchFocus = !searchView.isIconified();
+        }
+
         outState.putCharSequence(KEY_QUERY, searchQuery);
         outState.putBoolean(KEY_FOCUS, searchFocus);
         outState.putInt(KEY_LAST, lastPage);
@@ -204,14 +325,20 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
 
             String query = intent.getStringExtra(SearchManager.QUERY);
-            Log.d(TAG, "Query: "+query);
+            Log.d(TAG, "Query: " + query);
             handleSearch(query);
 
         // handle suggestion click
         } else if(Intent.ACTION_VIEW.equals(intent.getAction())) {
 
             String query = intent.getDataString();
+            if (query==null)
+                return;
             if (!query.contains("/")) {
+                if (searchView.isIconified()) {
+                    searchView.setIconified(false);
+                    searchItem.expandActionView();
+                }
                 searchView.setQuery(query+"/", false);
                 ((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE))
                         .toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
@@ -224,21 +351,24 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
     private void handleSearch(String query) {
         try {
-//            adapter.reset();
             String[] parts = query.split("/");
             repoOwner = parts[0];
             repoName = parts[1];
             adapter.setLoading();
+            lastPage = 0;
             service.listStargazers(repoOwner, repoName, 1).enqueue(this);
         } catch (Exception e) {
-            repoName = null;
             adapter.setError(getString(R.string.error_query, query));
             Log.e(TAG, getString(R.string.error_query, query), e);
         } finally {
-            resetTitle();
+            setupTitleAndHome();
         }
     }
 
+    // NB: is safe to store pages in local variables with no synchronization
+    //     because consecutive loading cannot overlap as the implicit implementation
+    //     of the ScrollListener does not allow a new call until the previous returned
+    //     some data or failed
     private void loadNextDataFromApi(int page) {
         if (page<=lastPage) {
             currentPage = page;
@@ -248,7 +378,8 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
     }
 
     @Override
-    public void onResponse(Call<List<GitHubUser>> call, Response<List<GitHubUser>> response) {
+    public void onResponse(@NonNull Call<List<GitHubUser>> call,
+                           @NonNull Response<List<GitHubUser>> response) {
 
         try {
 
@@ -257,7 +388,7 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
                 Headers headers = response.headers();
                 List<GitHubUser> users = response.body();
 
-                // count only the first time
+                // count items and pages only the first time of page loading
                 if (adapter.getItemCount()<GitHubService.PER_PAGE) {
                     currentPage = 1;
                     lastPage = GitHubService.findLastPage(headers);
@@ -266,18 +397,21 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
                 adapter.addData(users, currentPage < lastPage);
 
-                //collapse search bar
+                // collapse search bar
                 searchView.post(() -> {
-                    searchQuery = "";
+                    searchView.setOnQueryTextListener(null);
+                    searchItem.setOnActionExpandListener(null);
                     searchView.setQuery("", false);
                     searchView.setIconified(true);
                     searchItem.collapseActionView();
+                    searchItem.setOnActionExpandListener(this);
+                    searchView.setOnQueryTextListener(this);
                 });
 
             } else {
 
-                adapter.setError(response.message());
                 repoName = null;
+                adapter.setError(response.message());
 
             }
 
@@ -285,29 +419,30 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
 
             //This should not happen ...
             repoName = null;
-            adapter.setError(e.getMessage());
+            String errMsg = String.valueOf(getString(R.string.error_response, e.getMessage()));
+            adapter.setError(errMsg);
             failScrolling();
-            Log.e(TAG, getString(R.string.error_response), e);
+            Log.e(TAG, getString(R.string.error_response, errMsg), e);
 
         } finally {
-            resetTitle();
+
+            setupTitleAndHome();
+
         }
     }
 
     @Override
-    public void onFailure(Call<List<GitHubUser>> call, Throwable t) {
+    public void onFailure(@NonNull Call<List<GitHubUser>> call, @NonNull Throwable t) {
 
-        if (currentPage==1) {
-            repoName = null;
-            resetTitle();
-            adapter.setError(getString(R.string.error_loading));
-        } else
+        String errMsg = getString(R.string.error_loading, String.valueOf(t.getMessage()));
+        if (currentPage<=1)
+            adapter.setError(errMsg);
+
+        else
             failScrolling();
 
-        Toast.makeText(this,
-                    getString(R.string.error_loading)+": "+t.getMessage(),
-                    Toast.LENGTH_SHORT).show();
-        Log.e(TAG, getString(R.string.error_loading), t);
+        Toast.makeText(this, errMsg, Toast.LENGTH_SHORT).show();
+        Log.e(TAG, "Pag "+currentPage+" - "+t, t);
     }
 
     private void failScrolling() {
@@ -330,15 +465,21 @@ public class MainActivity extends AppCompatActivity implements Callback<List<Git
         if (lastPage<=1)
             showCount(currentPageSize);
         else
-            service.listStargazers(repoOwner, repoName, lastPage).enqueue(new Callback<List<GitHubUser>>() {
-                    @Override
-                    public void onResponse(Call<List<GitHubUser>> call, Response<List<GitHubUser>> response) {
-                        if (response.isSuccessful())
-                            showCount(GitHubService.countUsers(lastPage, response.body()));
-                    }
-                    @Override
-                    public void onFailure(Call<List<GitHubUser>> call, Throwable t) {}
-                });
+            service.listStargazers(repoOwner, repoName, lastPage).enqueue(
+                    new Callback<List<GitHubUser>>() {
+                        @Override
+                        public void onResponse(
+                                @NonNull Call<List<GitHubUser>> call,
+                                @NonNull Response<List<GitHubUser>> response) {
+                            if (response.isSuccessful())
+                                showCount(GitHubService
+                                        .countUsers(lastPage, response.body()));
+                        }
+                        @Override
+                        public void onFailure(
+                                @NonNull Call<List<GitHubUser>> call,
+                                @NonNull Throwable t) {}
+                    });
     }
 
     private void showCount(int n) {

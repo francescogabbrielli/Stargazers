@@ -19,6 +19,7 @@ import static org.junit.Assert.assertTrue;
  * Basic GitHub Tests (not a proper Unit test)
  *
  * NB: check one repos and update expected data before running!
+ *
  * Created by Francesco Gabbrielli on 20/02/18.
  */
 public class GitHubApiTest {

@@ -1,5 +1,6 @@
 package it.francescogabbrielli.apps.stargazers;
 
+import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -36,10 +37,10 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
     private final static String KEY_STATUS          = "status";
     private final static String KEY_ERROR           = "error";
 
-    private final static int STATUS_DEFAULT         = 1;
-    private final static int STATUS_MORE            = 2;
-    private final static int STATUS_EMPTY           = 3;
-    private final static int STATUS_ERROR           = 4;
+    public final static int STATUS_DEFAULT         = 1;
+    public final static int STATUS_MORE            = 2;
+    public final static int STATUS_EMPTY           = 3;
+    public final static int STATUS_ERROR           = 4;
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView imageView;
@@ -77,7 +78,11 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
         status = STATUS_DEFAULT;
         requestOptions = new RequestOptions();
         requestOptions.placeholder(R.drawable.ic_github);
-        clear();
+    }
+
+    private void clear() {
+        users.clear();
+        error = null;
     }
 
     public void readFromBundle(Bundle bundle) {
@@ -112,6 +117,10 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
         clear();
         status = STATUS_EMPTY;
         notifyDataSetChanged();
+    }
+
+    public int getStatus() {
+        return status;
     }
 
     public synchronized void setError(@NonNull String error) {
@@ -186,6 +195,15 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
                     context.startActivity(browserIntent);
                 }
             });
+            holder.itemView.setOnLongClickListener((v) -> {
+                Intent searchIntent = new Intent(
+                        Intent.ACTION_VIEW,
+                        new Uri.Builder().path(user.getLogin()).build(),
+                        context,
+                        MainActivity.class);
+                context.startActivity(searchIntent);
+                return true;
+            });
 
         } else if (type==STATUS_ERROR) {
 
@@ -228,11 +246,13 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
     }
 
     /**
-     * Clear model
+     * Check if at least one user is present in the model
+     *
+     * @return
+     *      true if at least one user is present
      */
-    private void clear() {
-        users.clear();
-        error = null;
+    public boolean hasUsers() {
+        return !users.isEmpty();
     }
 
 }

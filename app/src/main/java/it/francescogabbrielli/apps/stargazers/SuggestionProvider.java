@@ -32,6 +32,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
  */
 public class SuggestionProvider extends ContentProvider {
 
+    public final static String TAG = "Stargazers-Provider";
+
     // Creates a UriMatcher object.
     private static final UriMatcher sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
@@ -97,7 +99,7 @@ public class SuggestionProvider extends ContentProvider {
                     apiQuery(ret, selectionArgs[0]);
                 break;
             default:
-                Log.i(MainActivity.TAG, "Unhandled query: "+sUriMatcher.match(uri));
+                Log.i(TAG, "Unhandled query: "+sUriMatcher.match(uri));
         }
         return ret;
     }
@@ -108,7 +110,7 @@ public class SuggestionProvider extends ContentProvider {
 
             Thread.sleep(200);//TODO: implement debouncing instead
 
-            int hintsNr = getContext().getResources().getInteger(R.integer.hints);
+            int hintsNr = getContext().getResources().getInteger(R.integer.hint_max_nr);
 
             if (query.contains("/")) {
 
@@ -119,7 +121,7 @@ public class SuggestionProvider extends ContentProvider {
                         service.searchRepos(repoQuery+"+user:"+parts[0], "stars", hintsNr)
                                 .execute();
 
-                Log.d(MainActivity.TAG, "Query "+parts[0]+"'s repos: "+repoQuery+"+user:"+parts[0]);
+                Log.d(TAG, "Query "+parts[0]+"'s repos: "+repoQuery+"+user:"+parts[0]);
 
                 int i = 0;
                 if (response.isSuccessful())
@@ -127,7 +129,7 @@ public class SuggestionProvider extends ContentProvider {
                         if (query.equals(r.getFullName()))
                             break;
                         cursor.addRow(new Object[]{++i, r.getName(), r.getFullName()});
-                        Log.d(MainActivity.TAG, "- "+r.getFullName());
+                        Log.d(TAG, "- "+r.getFullName());
                     }
 
             } else if (!query.isEmpty()){
@@ -136,20 +138,20 @@ public class SuggestionProvider extends ContentProvider {
                         service.searchUsers(query+"+in:login+in:fullname", hintsNr)
                                 .execute();
 
-                Log.d(MainActivity.TAG, "Query users: "+query);
+                Log.d(TAG, "Query users: "+query);
 
                 int i = 0;
                 if (response.isSuccessful())
                     for (GitHubUser u : response.body().getItems()) {
                         cursor.addRow(new Object[]{++i, u.getLogin(), u.getLogin()});
-                        Log.d(MainActivity.TAG, "- " + u.getLogin());
+                        Log.d(TAG, "- " + u.getLogin());
                     }
 
             }
 
         } catch(Exception e) {
             //Toast.makeText(getContext(), R.string.error_loading, Toast.LENGTH_SHORT).show();
-            Log.e(MainActivity.TAG, e.getMessage(), e);
+            Log.e(TAG, e.getMessage(), e);
         }
 
     }

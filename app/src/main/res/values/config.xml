@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="github_api_baseurl">https://api.github.com/</string>
-    <integer name="hints">5</integer>
+    <string name="home_page">"https://github.com/francescogabbrielli/Stargazers/blob/master/README.md"</string>
+
     <integer name="cache_size">10000000</integer>
-    <integer name="timeout">10</integer>
+    <integer name="timeout">15</integer>
+
+    <integer name="hint_max_nr">5</integer>
     <integer name="hint_timeout">5</integer>
+
 </resources>
