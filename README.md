@@ -12,7 +12,7 @@ The interaction on a user in the list is as follows:
 - by long tapping you will predispose a new search on that user's repositories (if any)
 
 ### Youtube sample
-[![Open on Youtube](https://img.youtube.com/vi/rYx5bj69dSo/2.jpg)](https://youtu.be/rYx5bj69dSo)
+[![Open on Youtube](https://img.youtube.com/vi/uqopHsHzD04/2.jpg)](https://youtu.be/uqopHsHzD04)
 
 ## Technical notes and Open Source libraries
 The client is implemented with [Retrofit](http://square.github.io/retrofit/).

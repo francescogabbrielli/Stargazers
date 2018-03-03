@@ -424,7 +424,7 @@ public class MainActivity extends AppCompatActivity
                     count(lastPage, users.size());
                 }
 
-                adapter.addData(users, lastPage>1);
+                adapter.addData(users, scrollListener.getCurrentPage() < lastPage);
 
                 // collapse search bar
                 searchView.post(() -> {
