@@ -1,14 +1,28 @@
 package it.francescogabbrielli.apps.stargazers;
 
+import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
+import android.util.Log;
 
 /**
- * Copied from https://gist.github.com/nesquena/d09dc68ff07e845cc622
+ *
+ *
+ * REFERENCES
+ * ==========
+ * https://gist.github.com/nesquena/d09dc68ff07e845cc622
  */
 public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnScrollListener {
+
+    private final static String TAG = "Stargazers-Scrolling";
+
+    private final static String KEY_PAGE        = "page";
+    private final static String KEY_LOADING     = "loading";
+    private final static String KEY_COUNT       = "count";
+
     // The minimum amount of items to have below your current scroll position
     // before item_loading more.
     private int visibleThreshold = 5;
@@ -54,7 +68,12 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
     // We are given a few useful parameters to help us work out if we need to load some more data,
     // but first we check if we are waiting for the previous load to finish.
     @Override
-    public void onScrolled(RecyclerView view, int dx, int dy) {
+    public synchronized void onScrolled(RecyclerView view, int dx, int dy) {
+
+        // don't react soon after a failure
+        if (SystemClock.elapsedRealtime()-failureTime<1000)
+            return;
+
         int lastVisibleItemPosition = 0;
         int totalItemCount = mLayoutManager.getItemCount();
 
@@ -76,6 +95,7 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             if (totalItemCount == 0) {
                 this.loading = true;
             }
+            Log.v(TAG, "INVALIDATED: "+currentPage+","+loading);
         }
         // If it’s still item_loading, we check to see if the dataset count has
         // changed, if so we conclude it has finished item_loading and update the current page
@@ -83,6 +103,7 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         if (loading && (totalItemCount > previousTotalItemCount)) {
             loading = false;
             previousTotalItemCount = totalItemCount;
+            Log.v(TAG, "LOADED: "+currentPage+","+loading);
         }
 
         // If it isn’t currently item_loading, we check to see if we have breached
@@ -93,21 +114,56 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             currentPage++;
             onLoadMore(currentPage, totalItemCount, view);
             loading = true;
+            Log.v(TAG, "LOAD: "+currentPage+","+loading);
         }
     }
 
     // Call this method whenever performing new searches
-    public void resetState() {
+    public synchronized void resetState() {
         this.currentPage = this.startingPageIndex;
         this.previousTotalItemCount = 0;
         this.loading = true;
+        Log.v(TAG, "RESET: "+currentPage+","+loading);
+    }
+
+    /**
+     * Retrieve state from bundle
+     *
+     * @param bundle
+     */
+    public synchronized void retrieveState(Bundle bundle) {
+        currentPage = bundle.getInt(KEY_PAGE);
+        loading = bundle.getBoolean(KEY_LOADING);
+        previousTotalItemCount = bundle.getInt(KEY_COUNT);
+        Log.v(TAG, "RETRIEVE: "+currentPage+","+loading);
+    }
+
+    /**
+     * Save state to bundle
+     *
+     * @param bundle
+     */
+    public synchronized void saveState(Bundle bundle) {
+        bundle.putInt(KEY_PAGE, currentPage);
+        bundle.putBoolean(KEY_LOADING, loading);
+        bundle.putInt(KEY_COUNT, previousTotalItemCount);
     }
 
     // Defines the process for actually item_loading more data based on page
     public abstract void onLoadMore(int page, int totalItemsCount, RecyclerView view);
 
-    public void fallback() {
-        currentPage--;
-        this.loading = false;
+    public synchronized int getCurrentPage() {
+        return currentPage;
     }
+
+    private long failureTime;
+
+    public synchronized void fail() {
+        failureTime = SystemClock.elapsedRealtime();
+        currentPage--;
+        loading = false;
+        Log.v(TAG, "FAIL: "+currentPage+","+loading);
+
+    }
+
 }

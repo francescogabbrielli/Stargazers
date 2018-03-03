@@ -60,7 +60,8 @@ public class MainActivity extends AppCompatActivity
     private final static String KEY_REPO_NAME       = "repo";
     private final static String KEY_QUERY           = "query";
     private final static String KEY_FOCUS           = "focus";
-    private final static String KEY_LAST            = "last";
+    private final static String KEY_CURR_PAGE       = "curr_page";
+    private final static String KEY_LAST_PAGE       = "last_page";
 
     private RecyclerView recycler;
     private RecyclerAdapter adapter;
@@ -76,7 +77,7 @@ public class MainActivity extends AppCompatActivity
     private boolean searchFocus;
 
     private String repoOwner, repoName;
-    private int currentPage, lastPage;
+    private int lastPage;
 
 
     @Override
@@ -91,11 +92,13 @@ public class MainActivity extends AppCompatActivity
 
         if (savedInstanceState!=null) {
             adapter.readFromBundle(savedInstanceState);
+            scrollListener.retrieveState(savedInstanceState);
             repoOwner = savedInstanceState.getString(KEY_REPO_OWNER);
             repoName = savedInstanceState.getString(KEY_REPO_NAME);
             searchQuery = savedInstanceState.getCharSequence(KEY_QUERY);
             searchFocus = savedInstanceState.getBoolean(KEY_FOCUS);
-            lastPage = savedInstanceState.getInt(KEY_LAST);
+//            currentPage = savedInstanceState.getInt(KEY_CURR_PAGE);
+            lastPage = savedInstanceState.getInt(KEY_LAST_PAGE);
         }
 
         setupTitleAndHome();
@@ -107,16 +110,31 @@ public class MainActivity extends AppCompatActivity
     // STATE METHODS: These methods determine the state of the activity
     //----------------------------------------------------------------------------------------------
     //
-    //----------------------------------------------------------------------------------------------
-    //
-    //----------------------------------------------------------------------------------------------
-    //
     private boolean isRepoSet() {
         return repoName!=null;
     }
 
     private boolean isError() {
         return adapter.getStatus()==RecyclerAdapter.STATUS_ERROR;
+    }
+
+    private void setError(@NonNull Throwable t) {
+        String errMsg = getString(R.string.error_response, t.getMessage());
+        Log.e(TAG, "Page "+scrollListener.getCurrentPage()+ " - " + errMsg, t);
+        setError(errMsg);
+    }
+
+    private void setError(String errMsg) {
+        Toast.makeText(this, errMsg, Toast.LENGTH_SHORT).show();
+
+        //if is already scrolling don't set the error state...
+        //...just leave the scrolling loading going back to the previous page
+        if (scrollListener.getCurrentPage()<=1) {
+            repoName = null;
+            adapter.setError(errMsg);
+        } else {
+            scrollListener.fail();
+        }
     }
 
     private boolean isOk() {
@@ -130,6 +148,7 @@ public class MainActivity extends AppCompatActivity
     private boolean isQueryTyped() {
         return !TextUtils.isEmpty(searchQuery);
     }
+    //
     // </editor-fold>
     //----------------------------------------------------------------------------------------------
 
@@ -139,10 +158,6 @@ public class MainActivity extends AppCompatActivity
     // SETUP METHODS
     //----------------------------------------------------------------------------------------------
     //
-    private void setupHomePage() {
-
-    }
-
     private void setupTitleAndHome() {
 
         //setup title
@@ -176,16 +191,16 @@ public class MainActivity extends AppCompatActivity
         scrollListener = new EndlessRecyclerViewScrollListener(layoutManager) {
             @Override
             public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
-                Log.d(TAG, String.format("Try loading more data for page %d, having %d items", page, totalItemsCount));
+                Log.v(TAG, String.format("Try loading more data for page %d, having %d items", page, totalItemsCount));
                 if (totalItemsCount > GitHubService.PER_PAGE)
                     loadNextDataFromApi(page);
                 else
                     resetState();
             }
         };
-        recycler.addOnScrollListener(scrollListener);
         adapter = new RecyclerAdapter(this, scrollListener);
         recycler.setAdapter(adapter);
+        recycler.addOnScrollListener(scrollListener);
     }
 
     private void setupRetrofit() {
@@ -212,6 +227,8 @@ public class MainActivity extends AppCompatActivity
         service = retrofit.create(GitHubService.class);
 
     }
+    //
+    // SETUP METHODS
     // </editor-fold>
     //----------------------------------------------------------------------------------------------
 
@@ -266,13 +283,14 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onMenuItemActionExpand(MenuItem item) {
-        if (isRepoSet())
-            searchView.post(()-> {
+        if (isRepoSet()) {
+            searchView.post(() -> {
                 searchView.setOnQueryTextListener(null);
-                searchQuery = repoOwner+"/"+repoName;
+                searchQuery = repoOwner + "/" + repoName;
                 searchView.setQuery(searchQuery, false);
                 searchView.setOnQueryTextListener(this);
             });
+        }
         return true;
     }
 
@@ -286,8 +304,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onQueryTextSubmit(String query) {
-//        searchQuery = query;
-        return true;
+        return false;
     }
 
     @Override
@@ -297,6 +314,7 @@ public class MainActivity extends AppCompatActivity
         outState.putString(KEY_REPO_NAME, repoName);
 
         adapter.writeToBundle(outState);
+        scrollListener.saveState(outState);
 
         // update searchQuery and searchFocus only from the search field (if it has layout)
         searchQuery = null;
@@ -308,18 +326,18 @@ public class MainActivity extends AppCompatActivity
 
         outState.putCharSequence(KEY_QUERY, searchQuery);
         outState.putBoolean(KEY_FOCUS, searchFocus);
-        outState.putInt(KEY_LAST, lastPage);
+//        outState.putInt(KEY_CURR_PAGE, currentPage);
+        outState.putInt(KEY_LAST_PAGE, lastPage);
 
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        handleIntent(intent);
-    }
 
-    private void handleIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        Log.v(TAG, "Action: "+intent.getAction());
 
         // search stargazers
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
@@ -328,7 +346,7 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "Query: " + query);
             handleSearch(query);
 
-        // handle suggestion click
+        // handle suggestion click or direct user search
         } else if(Intent.ACTION_VIEW.equals(intent.getAction())) {
 
             String query = intent.getDataString();
@@ -336,14 +354,27 @@ public class MainActivity extends AppCompatActivity
                 return;
             if (!query.contains("/")) {
                 if (searchView.isIconified()) {
+                    searchItem.setOnActionExpandListener(null);
+//                    new MenuItem.OnActionExpandListener() {
+//                        @Override
+//                        public boolean onMenuItemActionExpand(MenuItem item) {
+//                            return true;
+//                        }
+//
+//                        @Override
+//                        public boolean onMenuItemActionCollapse(MenuItem item) {
+//                            return true;
+//                        }
+//                    });
                     searchView.setIconified(false);
                     searchItem.expandActionView();
+                    searchItem.setOnActionExpandListener(this);
                 }
                 searchView.setQuery(query+"/", false);
                 ((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE))
                         .toggleSoftInput(InputMethodManager.SHOW_FORCED, InputMethodManager.HIDE_IMPLICIT_ONLY);
             } else {
-                handleSearch(query);
+                searchView.setQuery(query, true);
             }
 
         }
@@ -356,6 +387,7 @@ public class MainActivity extends AppCompatActivity
             repoName = parts[1];
             adapter.setLoading();
             lastPage = 0;
+            Log.d(TAG, "Loading first page for " + repoName);
             service.listStargazers(repoOwner, repoName, 1).enqueue(this);
         } catch (Exception e) {
             adapter.setError(getString(R.string.error_query, query));
@@ -371,7 +403,7 @@ public class MainActivity extends AppCompatActivity
     //     some data or failed
     private void loadNextDataFromApi(int page) {
         if (page<=lastPage) {
-            currentPage = page;
+//            currentPage = page;
             Log.d(TAG, "Loading page " + page);
             service.listStargazers(repoOwner, repoName, page).enqueue(this);
         }
@@ -390,12 +422,11 @@ public class MainActivity extends AppCompatActivity
 
                 // count items and pages only the first time of page loading
                 if (adapter.getItemCount()<GitHubService.PER_PAGE) {
-                    currentPage = 1;
                     lastPage = GitHubService.findLastPage(headers);
                     count(lastPage, users.size());
                 }
 
-                adapter.addData(users, currentPage < lastPage);
+                adapter.addData(users, lastPage>1);
 
                 // collapse search bar
                 searchView.post(() -> {
@@ -410,19 +441,13 @@ public class MainActivity extends AppCompatActivity
 
             } else {
 
-                repoName = null;
-                adapter.setError(response.message());
+                setError(response.message());
 
             }
 
         } catch(Exception e) {
 
-            //This should not happen ...
-            repoName = null;
-            String errMsg = String.valueOf(getString(R.string.error_response, e.getMessage()));
-            adapter.setError(errMsg);
-            failScrolling();
-            Log.e(TAG, getString(R.string.error_response, errMsg), e);
+            setError(e);
 
         } finally {
 
@@ -433,24 +458,9 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onFailure(@NonNull Call<List<GitHubUser>> call, @NonNull Throwable t) {
-
-        String errMsg = getString(R.string.error_loading, String.valueOf(t.getMessage()));
-        if (currentPage<=1)
-            adapter.setError(errMsg);
-
-        else
-            failScrolling();
-
-        Toast.makeText(this, errMsg, Toast.LENGTH_SHORT).show();
-        Log.e(TAG, "Pag "+currentPage+" - "+t, t);
+        setError(t);
     }
 
-    private void failScrolling() {
-        recycler.post(() -> {
-            currentPage--;
-            scrollListener.fallback();
-        });
-    }
 
     /**
      * Count all users, eventually using an additional call to retrieve the last page.
@@ -474,11 +484,14 @@ public class MainActivity extends AppCompatActivity
                             if (response.isSuccessful())
                                 showCount(GitHubService
                                         .countUsers(lastPage, response.body()));
+                            //TODO: else show a message
                         }
                         @Override
                         public void onFailure(
                                 @NonNull Call<List<GitHubUser>> call,
-                                @NonNull Throwable t) {}
+                                @NonNull Throwable t) {
+                            //TODO: show a message
+                        }
                     });
     }
 

@@ -125,6 +125,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
     public synchronized void setError(@NonNull String error) {
         clear();
+        notifyItemRemoved(0);
         this.error = error;
         status = STATUS_ERROR;
         notifyDataSetChanged();

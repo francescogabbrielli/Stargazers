@@ -3,13 +3,19 @@
 A sample GitHub API Android client that shows the stargazers list for a given repository.
 
 ## Description
-The UI is pretty simple: just a search bar, used to find a GitHub repository, with search suggestions on the fly. 
-Once found, It shows the list of stargazers for that repository: image and login. Clicking on a stargazer you will be redirected to his GitHub page. 
+Stargazers are GitHub users that show interest in a particular repository by starring it.
+
+This app UI is pretty straightforward: there is a search bar to find a GitHub repository, with search suggestions on the fly. 
+Once a repository is found, you can see the list of stargazers for that repository (with avatar and login name). 
+The interaction on a user in the list is as follows:
+- by tapping you will be redirected to the user's GitHub page
+- by long tapping you will predispose a new search on that user's repositories (if any)
 
 ### Youtube sample
 [![Open on Youtube](https://img.youtube.com/vi/rYx5bj69dSo/2.jpg)](https://youtu.be/rYx5bj69dSo)
 
-## Technical notes and OpenSource libraries
+## Technical notes and Open Source libraries
 The client is implemented with [Retrofit](http://square.github.io/retrofit/).
-The list is implemented with an [endless](https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView) scroll list, implemented with a RecyclerView. Thumbnail images are managed with [Glide](https://github.com/bumptech/glide)
+The list is implemented with a RecyclerView using a slightly modified version of [EndlessRecyclerViewScrollListener](https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView)
+for the infinite progressive scrolling and [Glide](https://github.com/bumptech/glide) for the thumbnail images asynchrounous management inside the RecyclerView.
 
