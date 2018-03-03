@@ -97,7 +97,6 @@ public class MainActivity extends AppCompatActivity
             repoName = savedInstanceState.getString(KEY_REPO_NAME);
             searchQuery = savedInstanceState.getCharSequence(KEY_QUERY);
             searchFocus = savedInstanceState.getBoolean(KEY_FOCUS);
-//            currentPage = savedInstanceState.getInt(KEY_CURR_PAGE);
             lastPage = savedInstanceState.getInt(KEY_LAST_PAGE);
         }
 
@@ -326,7 +325,6 @@ public class MainActivity extends AppCompatActivity
 
         outState.putCharSequence(KEY_QUERY, searchQuery);
         outState.putBoolean(KEY_FOCUS, searchFocus);
-//        outState.putInt(KEY_CURR_PAGE, currentPage);
         outState.putInt(KEY_LAST_PAGE, lastPage);
 
         super.onSaveInstanceState(outState);

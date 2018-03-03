@@ -35,6 +35,8 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
     // Sets the starting page index
     private int startingPageIndex = 1;
 
+    private boolean retrieved;
+
     RecyclerView.LayoutManager mLayoutManager;
 
     public EndlessRecyclerViewScrollListener(LinearLayoutManager layoutManager) {
@@ -64,18 +66,27 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         return maxSize;
     }
 
+    // FIX issue #1: retry to load after network error between orientation changes
+    @Override
+    public void onScrollStateChanged(RecyclerView view, int newState) {
+        if (retrieved) {
+            if (loading)
+                onLoadMore(currentPage, mLayoutManager.getItemCount(), view);
+            retrieved = false;
+        }
+    }
+
     // This happens many times a second during a scroll, so be wary of the code you place here.
     // We are given a few useful parameters to help us work out if we need to load some more data,
     // but first we check if we are waiting for the previous load to finish.
     @Override
     public synchronized void onScrolled(RecyclerView view, int dx, int dy) {
 
-        // don't react soon after a failure
-        if (SystemClock.elapsedRealtime()-failureTime<1000)
-            return;
-
         int lastVisibleItemPosition = 0;
         int totalItemCount = mLayoutManager.getItemCount();
+
+        if (dy<0)
+            return;
 
         if (mLayoutManager instanceof StaggeredGridLayoutManager) {
             int[] lastVisibleItemPositions = ((StaggeredGridLayoutManager) mLayoutManager).findLastVisibleItemPositions(null);
@@ -95,7 +106,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             if (totalItemCount == 0) {
                 this.loading = true;
             }
-            Log.v(TAG, "INVALIDATED: "+currentPage+","+loading);
         }
         // If it’s still item_loading, we check to see if the dataset count has
         // changed, if so we conclude it has finished item_loading and update the current page
@@ -103,7 +113,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         if (loading && (totalItemCount > previousTotalItemCount)) {
             loading = false;
             previousTotalItemCount = totalItemCount;
-            Log.v(TAG, "LOADED: "+currentPage+","+loading);
         }
 
         // If it isn’t currently item_loading, we check to see if we have breached
@@ -114,7 +123,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
             currentPage++;
             onLoadMore(currentPage, totalItemCount, view);
             loading = true;
-            Log.v(TAG, "LOAD: "+currentPage+","+loading);
         }
     }
 
@@ -123,7 +131,6 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         this.currentPage = this.startingPageIndex;
         this.previousTotalItemCount = 0;
         this.loading = true;
-        Log.v(TAG, "RESET: "+currentPage+","+loading);
     }
 
     /**
@@ -135,7 +142,7 @@ public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnS
         currentPage = bundle.getInt(KEY_PAGE);
         loading = bundle.getBoolean(KEY_LOADING);
         previousTotalItemCount = bundle.getInt(KEY_COUNT);
-        Log.v(TAG, "RETRIEVE: "+currentPage+","+loading);
+        retrieved = true;
     }
 
     /**
