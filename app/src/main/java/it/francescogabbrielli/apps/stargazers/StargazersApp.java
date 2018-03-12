@@ -150,7 +150,7 @@ public class StargazersApp extends Application
 
     @Singleton
     @Component(modules = MainModule.class)
-    interface ApplcationComponent {
+    interface ApplicationComponent {
         void inject(StargazersApp app);
     }
 
@@ -158,7 +158,7 @@ public class StargazersApp extends Application
     //use this instead of onCreate to build injection
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        DaggerStargazersApp_ApplcationComponent.builder()
+        DaggerStargazersApp_ApplicationComponent.builder()
                 .retrofitModule(new RetrofitModule())
                 .build()
                 .inject(this);
