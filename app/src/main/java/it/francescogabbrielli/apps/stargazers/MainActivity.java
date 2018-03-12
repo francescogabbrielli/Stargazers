@@ -1,12 +1,8 @@
 package it.francescogabbrielli.apps.stargazers;
 
-import android.annotation.TargetApi;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -16,21 +12,26 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
+import dagger.android.AndroidInjection;
+import it.francescogabbrielli.apps.stargazers.controller.EndlessRecyclerViewScrollListener;
+import it.francescogabbrielli.apps.stargazers.controller.WebViewClient;
+import it.francescogabbrielli.apps.stargazers.model.GitHubService;
+import it.francescogabbrielli.apps.stargazers.model.GitHubUser;
+import it.francescogabbrielli.apps.stargazers.model.RecyclerAdapter;
 import okhttp3.Cache;
 import okhttp3.Headers;
 import okhttp3.OkHttpClient;
@@ -65,7 +66,6 @@ public class MainActivity extends AppCompatActivity
     private final static String KEY_REPO_NAME       = "repo";
     private final static String KEY_QUERY           = "query";
     private final static String KEY_FOCUS           = "focus";
-    private final static String KEY_CURR_PAGE       = "curr_page";
     private final static String KEY_LAST_PAGE       = "last_page";
 
     private RecyclerView recycler;
@@ -76,7 +76,8 @@ public class MainActivity extends AppCompatActivity
 
     private EndlessRecyclerViewScrollListener scrollListener;
 
-    private GitHubService service;
+    @Inject @Named("main")
+    GitHubService service;
 
     private CharSequence searchQuery;
     private boolean searchFocus;
@@ -88,12 +89,14 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
+        AndroidInjection.inject(this);
+
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
         setSupportActionBar(findViewById(R.id.toolbar));
         setupRecycler();
-        setupRetrofit();
+//        setupRetrofit();
 
         if (savedInstanceState!=null) {
             adapter.readFromBundle(savedInstanceState);
@@ -174,31 +177,9 @@ public class MainActivity extends AppCompatActivity
         WebView v = findViewById(R.id.homepage);
         if (isRepoSet() || isOk() || isError())
             v.setVisibility(View.GONE);
-
-        else if (v.getUrl()==null) {
-            v.setWebViewClient(new WebViewClient() {
-                @Override
-                public void onPageFinished(WebView view, String url) {
-                    Resources r = getResources();
-                    int px = Math.round(TypedValue.applyDimension(
-                            TypedValue.COMPLEX_UNIT_DIP, 96, r.getDisplayMetrics()));
-                    view.setScrollY(px);
-                }
-
-                @Override
-                public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                    Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(i);
-                    return true;
-                }
-
-                @Override
-                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                    //TODO: handle no connection
-                }
-            });
-            v.loadUrl(getString(R.string.home_page));
-        }
+        else if (v.getUrl()==null)
+            new WebViewClient(this, v)
+                    .load(getString(R.string.home_page));
 
     }
 

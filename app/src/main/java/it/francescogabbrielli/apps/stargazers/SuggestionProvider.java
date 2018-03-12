@@ -13,14 +13,16 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import java.util.concurrent.TimeUnit;
+import javax.inject.Inject;
+import javax.inject.Named;
 
-import okhttp3.Cache;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+import dagger.android.AndroidInjection;
+
+import it.francescogabbrielli.apps.stargazers.model.GitHubRepo;
+import it.francescogabbrielli.apps.stargazers.model.GitHubSearch;
+import it.francescogabbrielli.apps.stargazers.model.GitHubService;
+import it.francescogabbrielli.apps.stargazers.model.GitHubUser;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * Created by Francesco Gabbrielli on 21/02/18.
@@ -42,33 +44,13 @@ public class SuggestionProvider extends ContentProvider {
         sUriMatcher.addURI(SuggestionProvider.class.getCanonicalName(), "search_suggest_query#", 2);
     }
 
-    private GitHubService service;
+    @Inject @Named("hint")
+    GitHubService service;
 
     @Override
     public boolean onCreate() {
-
-        Cache cache = new Cache(getContext().getCacheDir(), R.integer.cache_size);
-
-        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
-
-        int timeout = getContext().getResources().getInteger(R.integer.hint_timeout);
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(logging)
-                .cache(cache)
-                .connectTimeout(timeout, TimeUnit.SECONDS)
-                .readTimeout(timeout, TimeUnit.SECONDS)
-                .build();
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(getContext().getString(R.string.github_api_baseurl))
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(okHttpClient)
-                .build();
-        service = retrofit.create(GitHubService.class);
-
+        AndroidInjection.inject(this);
         return true;
-
     }
 
     @Nullable

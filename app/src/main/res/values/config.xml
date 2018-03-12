@@ -2,7 +2,7 @@
 <resources>
 
     <string name="github_api_baseurl">https://api.github.com/</string>
-    <string name="home_page">"https://github.com/francescogabbrielli/Stargazers/blob/master/README.md"</string>
+    <string name="home_page">"https://github.com/francescogabbrielli/Stargazers/blob/master/README.md#stargazers"</string>
 
     <integer name="cache_size">10000000</integer>
     <integer name="timeout">15</integer>

@@ -1,4 +1,4 @@
-package it.francescogabbrielli.apps.stargazers;
+package it.francescogabbrielli.apps.stargazers.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;

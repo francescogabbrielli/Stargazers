@@ -1,4 +1,4 @@
-package it.francescogabbrielli.apps.stargazers;
+package it.francescogabbrielli.apps.stargazers.controller;
 
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -17,7 +17,7 @@ import android.util.Log;
  */
 public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnScrollListener {
 
-    private final static String TAG = "Stargazers-Scrolling";
+    private final static String TAG = "StargazersApp-Scrolling";
 
     private final static String KEY_PAGE        = "page";
     private final static String KEY_LOADING     = "loading";

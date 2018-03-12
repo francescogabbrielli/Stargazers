@@ -1,13 +1,15 @@
 package it.francescogabbrielli.apps.stargazers;
 
-import android.content.Intent;
-
 import org.junit.Test;
 
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import it.francescogabbrielli.apps.stargazers.model.GitHubRepo;
+import it.francescogabbrielli.apps.stargazers.model.GitHubSearch;
+import it.francescogabbrielli.apps.stargazers.model.GitHubService;
+import it.francescogabbrielli.apps.stargazers.model.GitHubUser;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;

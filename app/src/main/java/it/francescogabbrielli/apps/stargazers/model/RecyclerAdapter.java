@@ -1,6 +1,5 @@
-package it.francescogabbrielli.apps.stargazers;
+package it.francescogabbrielli.apps.stargazers.model;
 
-import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -20,6 +19,10 @@ import com.bumptech.glide.request.RequestOptions;
 
 import java.util.LinkedList;
 import java.util.List;
+
+import it.francescogabbrielli.apps.stargazers.MainActivity;
+import it.francescogabbrielli.apps.stargazers.R;
+import it.francescogabbrielli.apps.stargazers.controller.EndlessRecyclerViewScrollListener;
 
 /**
  *

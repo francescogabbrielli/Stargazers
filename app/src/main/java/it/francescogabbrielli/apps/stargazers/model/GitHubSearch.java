@@ -1,4 +1,4 @@
-package it.francescogabbrielli.apps.stargazers;
+package it.francescogabbrielli.apps.stargazers.model;
 
 import java.util.List;
 
