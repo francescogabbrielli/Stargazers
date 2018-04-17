@@ -15,7 +15,6 @@ The interaction on a user in the list is as follows:
 [![Open on Youtube](https://img.youtube.com/vi/uqopHsHzD04/2.jpg)](https://youtu.be/uqopHsHzD04)
 
 ## Technical notes and Open Source libraries
-The client is implemented with [Retrofit](http://square.github.io/retrofit/).
-The list is implemented with a RecyclerView using a slightly modified version of [EndlessRecyclerViewScrollListener](https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView)
-for the infinite progressive scrolling and [Glide](https://github.com/bumptech/glide) for the thumbnail images asynchrounous management inside the RecyclerView.
-
+- The client is implemented with [Retrofit](http://square.github.io/retrofit/).
+- The scrollable list is implemented with a RecyclerView using a slightly modified version of [EndlessRecyclerViewScrollListener](https://github.com/codepath/android_guides/wiki/Endless-Scrolling-with-AdapterViews-and-RecyclerView) for the infinite progressive scrolling and [Glide](https://github.com/bumptech/glide) for the thumbnail images asynchrounous management inside the RecyclerView.
+- Dependency injection with Dagger2(http://square.github.io/dagger/)
